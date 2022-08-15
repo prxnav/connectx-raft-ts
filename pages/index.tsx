@@ -1,86 +1,119 @@
-import type { NextPage } from 'next'
-import Head from 'next/head'
-import Image from 'next/image'
+import Head from "next/head";
+import Image from "next/image";
+import styles from "../styles/Home.module.css";
+import { usePeople } from "../util/fetch-all-people";
+import { useState, MouseEventHandler } from "react";
+import toast, { Toaster } from "react-hot-toast";
+import { AddRelationships } from "../components/AddRelationship";
+import { AddPeople } from "../components/AddPeople";
+import { Relations } from "../components/Relations";
+export default function Home() {
+  const { people, setPeople } = usePeople();
+  function handleNewPerson(person: string) {
+    if (!people[person]) {
+      setPeople({ ...people, [person]: {} });
+    }
+  }
+  function handleNewRelation(
+    person1: string,
+    person2: string,
+    relation12: string,
+    relation21: string
+  ) {
+    let peopleCopy = JSON.parse(JSON.stringify(people));
+    const needsPerson1 = !peopleCopy[person1];
+    const needsPerson2 = !peopleCopy[person2];
+    if (needsPerson1 || needsPerson2) {
+      toast(
+        `Creating new person for ${[
+          needsPerson1 && JSON.stringify(person1),
+          needsPerson2 && JSON.stringify(person2),
+        ]
+          .filter(Boolean)
+          .join(" and ")}`,
+        { icon: "ℹ️" }
+      );
+      if (needsPerson1) {
+        peopleCopy[person1] = {};
+      }
+      if (needsPerson2) {
+        peopleCopy[person2] = {};
+      }
+    }
 
-const Home: NextPage = () => {
+    peopleCopy[person1][person2] = relation12;
+    peopleCopy[person2][person1] = relation21;
+    setPeople(peopleCopy);
+  }
+  const [selected, setSelected] = useState<string[]>([]);
+  const handleClick: MouseEventHandler<HTMLButtonElement> =
+    function handleClick(e) {
+      const name = e.currentTarget.dataset.name!;
+      let copy = [...selected];
+      if (copy.includes(name)) {
+        copy = copy.filter((x) => x !== name);
+      } else {
+        if (copy.length === 0) {
+          copy = [name];
+        } else {
+          copy = [copy[0], name];
+        }
+      }
+      setSelected(copy);
+    };
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-2">
-      <Head>
-        <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className="flex w-full flex-1 flex-col items-center justify-center px-20 text-center">
-        <h1 className="text-6xl font-bold">
-          Welcome to{' '}
-          <a className="text-blue-600" href="https://nextjs.org">
-            Next.js!
-          </a>
-        </h1>
-
-        <p className="mt-3 text-2xl">
-          Get started by editing{' '}
-          <code className="rounded-md bg-gray-100 p-3 font-mono text-lg">
-            pages/index.tsx
-          </code>
-        </p>
-
-        <div className="mt-6 flex max-w-4xl flex-wrap items-center justify-around sm:w-full">
-          <a
-            href="https://nextjs.org/docs"
-            className="mt-6 w-96 rounded-xl border p-6 text-left hover:text-blue-600 focus:text-blue-600"
-          >
-            <h3 className="text-2xl font-bold">Documentation &rarr;</h3>
-            <p className="mt-4 text-xl">
-              Find in-depth information about Next.js features and its API.
-            </p>
-          </a>
-
-          <a
-            href="https://nextjs.org/learn"
-            className="mt-6 w-96 rounded-xl border p-6 text-left hover:text-blue-600 focus:text-blue-600"
-          >
-            <h3 className="text-2xl font-bold">Learn &rarr;</h3>
-            <p className="mt-4 text-xl">
-              Learn about Next.js in an interactive course with quizzes!
-            </p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className="mt-6 w-96 rounded-xl border p-6 text-left hover:text-blue-600 focus:text-blue-600"
-          >
-            <h3 className="text-2xl font-bold">Examples &rarr;</h3>
-            <p className="mt-4 text-xl">
-              Discover and deploy boilerplate example Next.js projects.
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/import?filter=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className="mt-6 w-96 rounded-xl border p-6 text-left hover:text-blue-600 focus:text-blue-600"
-          >
-            <h3 className="text-2xl font-bold">Deploy &rarr;</h3>
-            <p className="mt-4 text-xl">
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
+    <div>
+      <div className="flex flex-col items-center justify-center">
+        <div className="mt-5">
+          <h1 className="font-roboto text-5xl text-cyan-500 hover:text-cyan-600 cursor-pointer">
+            ConnectX
+          </h1>
         </div>
-      </main>
 
-      <footer className="flex h-24 w-full items-center justify-center border-t">
-        <a
-          className="flex items-center justify-center gap-2"
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
-        </a>
-      </footer>
+        <div>
+          {Object.keys(people ?? {}).length > 0 ? (
+            <div
+              className="mt-5 gap-2"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+              }}
+            >
+              {Object.keys(people).map((p) => (
+                <button
+                  onClick={handleClick}
+                  key={p}
+                  data-name={p}
+                  className={`transition rounded-full flex items-center justify-center border-solid 
+                border-2 h-24 overflow-hidden p-2 text-center w-24 flex-col ${
+                  selected.includes(p) ? "border-blue-400" : ""
+                } `}
+                >
+                  <span className="overflow-hidden p-2 text-center w-24 text-ellipsis">
+                    {p}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div>Fetching...</div>
+          )}
+        </div>
+        <div className="mt-6">
+          <h1 className="text-xl font-bold">
+            {selected.length !== 2
+              ? "Relations will show here"
+              : `Relation between ${selected[0]} and ${selected[1]}`}
+          </h1>
+          {selected?.length === 2 && (
+            <Relations from={selected[0]} to={selected[1]} />
+          )}
+        </div>
+        <AddPeople handleNewPerson={handleNewPerson} />
+        <AddRelationships handleNewRelation={handleNewRelation} />
+        <Toaster />
+      </div>
     </div>
-  )
+  );
 }
-
-export default Home
